@@ -1,11 +1,7 @@
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
-*.so
 
 # Packages
 *.egg
@@ -25,10 +21,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
 
 # Environments
 .env
