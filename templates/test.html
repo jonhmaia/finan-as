@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Controle de Despesas</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body.dark-mode {
+            background-color: black;
+            color: beige;
+        }
+        body.light-mode {
+            background-color: white;
+            color: black;
+        }
+        .entrada {
+            color: #00ff3c;
+        }
+        .saida {
+            color: #ff0019;
+        }
+        .saldo-positivo {
+            color: #00ff3c;
+        }
+        .saldo-negativo {
+            color: #ff0019;
+        }
+        .table th, .table td {
+            color: gray;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dark-mode">
+    <div class="container">
+        <h1 class="mt-4">Controle de Despesas</h1>
+
+        <button id="toggleMode" class="btn btn-secondary mb-4">Alternar Modo</button>
+
+        <!-- Formulário de Filtro -->
+        <form method="GET" action="{{ url_for('index') }}" class="form-inline mb-4">
+            <div class="form-group mr-2">
+                <label for="month" class="mr-2">Mês:</label>
+                <select name="month" id="month" class="form-control">
+                    <option value="">-</option>
+                    {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == current_month %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="year" class="mr-2">Ano:</label>
+                <select name="year" id="year" class="form-control">
+                    <option value="">-</option>
+                    {% for y in range(2020, current_year + 1) %}
+                        <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-primary mr-2">Filtrar</button>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-danger mr-2">Limpar Filtros</a>
+            <a href="{{ url_for('download_pdf', month=request.args.get('month'), year=request.args.get('year')) }}" class="btn btn-outline-success">Baixar PDF</a>
+            <button style="margin-left: 8px;" type="button" class="btn btn-outline-warning" data-toggle="modal" data-target="#addEntryModal">Adicionar +</button>
+        </form>
+        <div class="mt-4">
+            <h3>Total de Entradas: {{ total_entradas }}</h3>
+            <h3>Total de Saídas: {{ total_saidas }}</h3>
+            <h3 class="{% if saldo_final > 0 %}saldo-positivo{% elif saldo_final < 0 %}saldo-negativo{% endif %}">Saldo Final: {{ saldo_final }}</h3>
+        </div>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>Categoria</th>
+                    <th>Tipo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr class="{% if entry.entry_type == 'Entrada' %}entrada{% else %}saida{% endif %}">
+                    <td>{{ entry.date }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td>{{ entry.amount }}</td>
+                    <td>{{ entry.category }}</td>
+                    <td>{{ entry.entry_type }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('delete_entry', entry_id=entry.id) }}" style="display:inline;">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <button type="submit" class="btn-excluir" >Excluir</button><i class="fa-solid fa-trash"></i>
+                            <style>
+                                .btn-excluir {
+                                    background-color: #ff0019;
+                                    color: white;
+                                    border: none;
+                                    padding: 5px 10px;
+                                    border-radius: 5px;
+                                    cursor: pointer;
+                                }
+                                .btn-excluir:hover {
+                                    background-color: #ff0019;
+                                }
+                            </style>
+                           
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="addEntryModal" tabindex="-1" role="dialog" aria-labelledby="addEntryModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addEntryModalLabel">Adicionar Entrada/Saída</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ url_for('add_entry') }}">
+                        <div class="form-group">
+                            <label for="entry_type">Tipo:</label>
+                            <select name="entry_type" class="form-control" required>
+                                <option value="Entrada">Entrada</option>
+                                <option value="Saída">Saída</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="date">Data:</label>
+                            <input type="date" name="date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Descrição:</label>
+                            <input type="text" name="description" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Valor:</label>
+                            <input type="number" step="0.01" name="amount" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Categoria:</label>
+                            <input type="text" name="category" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adicionar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const body = document.body;
+            const toggleButton = document.getElementById('toggleMode');
+            
+            const savedMode = localStorage.getItem('theme');
+            if (savedMode) {
+                body.classList.remove('dark-mode', 'light-mode');
+                body.classList.add(savedMode);
+            }
+
+            toggleButton.addEventListener('click', function() {
+                if (body.classList.contains('dark-mode')) {
+                    body.classList.remove('dark-mode');
+                    body.classList.add('light-mode');
+                    localStorage.setItem('theme', 'light-mode');
+                } else {
+                    body.classList.remove('light-mode');
+                    body.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark-mode');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
