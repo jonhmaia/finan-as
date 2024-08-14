@@ -1,2 +1,0 @@
-escreve no pdf o saldo final e saldo inicial
-configurar os alerts
